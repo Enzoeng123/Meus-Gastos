@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Gastos Pessoal - Cosmos</title>
+    <title>Controle de Gastos Pessoal</title>
+    <link rel="icon" href="moeda.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -106,12 +107,12 @@
     <div id="login-screen" class="fixed inset-0 flex items-center justify-center z-50 p-4">
         <div class="w-full max-w-md p-8 space-y-6 rounded-xl glassmorphism login-box">
             <div>
-                <h2 class="text-3xl font-bold text-center text-white">Controle Cósmico</h2>
-                <p class="mt-2 text-sm text-center text-gray-400">Entre na sua nave financeira.</p>
+                <h2 class="text-3xl font-bold text-center text-white">Controle Financeiro</h2>
+                <p class="mt-2 text-sm text-center text-gray-400">Entre no seu histórico financeiro.</p>
             </div>
             <form id="login-form" class="space-y-6" onsubmit="return false;">
                 <div>
-                    <label for="email" class="block text-sm font-medium text-gray-300">Email</label>
+                    <label for="email" class="block text-sm font-medium text-gray-300">E-mail</label>
                     <input id="email" name="email" type="email" autocomplete="email" required class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-2">
                 </div>
                 <div>
@@ -120,7 +121,7 @@
                 </div>
                 <div>
                     <button type="submit" id="login-btn" class="w-full flex justify-center py-2.5 px-4 rounded-md shadow-sm text-sm font-medium text-white liquid-glass">
-                        Engajar
+                        Entrar
                     </button>
                 </div>
                 <p id="login-error" class="text-sm text-rose-400 text-center"></p>
@@ -384,14 +385,14 @@
             const loginError = document.getElementById('login-error');
             loginError.textContent = '';
             loginBtn.disabled = true;
-            loginBtn.textContent = 'Engajando...';
+            loginBtn.textContent = 'Entrando...';
             try {
                 await signInWithEmailAndPassword(auth, email, password);
             } catch (error) {
                 loginError.textContent = 'Credenciais inválidas.';
             } finally {
                 loginBtn.disabled = false;
-                loginBtn.textContent = 'Engajar';
+                loginBtn.textContent = 'Entrar';
             }
         });
 
@@ -736,3 +737,4 @@
     </script>
 </body>
 </html>
+
