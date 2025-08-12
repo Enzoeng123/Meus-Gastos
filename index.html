@@ -219,7 +219,6 @@
                                 <option>Débito</option>
                                 <option>Crédito</option>
                                 <option>Pix</option>
-                                <option>Pagar Fatura</option>
                             </select>
                         </div>
                         <div>
@@ -229,6 +228,9 @@
                         <div class="flex gap-3 pt-2">
                             <button type="button" id="btn-add-nubank" class="w-full flex justify-center py-3 px-4 rounded-md text-cyan-300 liquid-glass">Receita</button>
                             <button type="button" id="btn-subtract-nubank" class="w-full flex justify-center py-3 px-4 rounded-md text-rose-300 liquid-glass">Despesa</button>
+                        </div>
+                        <div class="pt-3">
+                            <button type="button" id="btn-pay-invoice-nubank" class="w-full flex justify-center py-3 px-4 rounded-md text-yellow-300 liquid-glass">Pagar Fatura</button>
                         </div>
                     </form>
                 </div>
@@ -318,7 +320,7 @@
                 panel: document.getElementById('panel-cef'),
                 rawAmount: 0.0,
                 unsubscribe: null,
-                paymentOptions: ['Débito', 'Pix']
+                paymentOptions: ['Débito', 'Pix', 'Cred Juros', 'Cred Cm']
             },
             nubank: {
                 balanceEl: document.getElementById('balance-nubank'),
@@ -330,11 +332,12 @@
                 historyList: document.getElementById('history-list-nubank'),
                 addBtn: document.getElementById('btn-add-nubank'),
                 subtractBtn: document.getElementById('btn-subtract-nubank'),
+                payInvoiceBtn: document.getElementById('btn-pay-invoice-nubank'),
                 tab: document.getElementById('tab-nubank'),
                 panel: document.getElementById('panel-nubank'),
                 rawAmount: 0.0,
                 unsubscribe: null,
-                paymentOptions: ['Débito', 'Crédito', 'Pix', 'Pagar Fatura']
+                paymentOptions: ['Débito', 'Crédito', 'Pix']
             }
         };
 
@@ -414,6 +417,9 @@
             const bank = bankSections[bankId];
             bank.addBtn.addEventListener('click', () => addTransaction(bankId, false));
             bank.subtractBtn.addEventListener('click', () => addTransaction(bankId, true));
+            if (bank.payInvoiceBtn) {
+                bank.payInvoiceBtn.addEventListener('click', () => payNubankInvoice());
+            }
             setupCurrencyInput(bank.amountInput, (value) => { bank.rawAmount = value; });
             bank.historyList.addEventListener('click', (e) => {
                 const button = e.target.closest('button');
@@ -456,7 +462,6 @@
 
             if (description === '' || amount === 0) return;
 
-            // Regra especial: Transferência da CEF para o Nubank
             const isTransfer = bankId === 'cef' && description.toLowerCase().includes('nubank') && method === 'Pix' && isExpense;
             if (isTransfer) {
                 const transferId = crypto.randomUUID();
@@ -478,12 +483,6 @@
                     console.error("Erro na transferência automática:", error);
                 }
             } else {
-                // Regra especial: Pagamento de Fatura Nubank
-                if (bankId === 'nubank' && method === 'Pagar Fatura' && !isExpense) {
-                    alert('Pagamento de fatura deve ser registrado como uma despesa.');
-                    return;
-                }
-
                 const finalAmount = isExpense ? -Math.abs(amount) : Math.abs(amount);
                 const collectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_${bankId}`;
                 try {
@@ -493,10 +492,42 @@
                 }
             }
 
-            // Limpa o formulário após qualquer operação bem-sucedida
             bank.form.reset();
             bank.amountInput.value = '';
             bank.rawAmount = 0;
+        }
+        
+        async function payNubankInvoice() {
+            if (!currentUserId) return;
+
+            const collectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_nubank`;
+            const q = query(collection(db, collectionPath));
+            
+            try {
+                const querySnapshot = await getDocs(q);
+                const transactions = querySnapshot.docs.map(doc => doc.data());
+                
+                const fatura = transactions.reduce((acc, t) => {
+                    if (t.method === 'Crédito' && t.amount < 0) return acc + Math.abs(t.amount);
+                    if (t.method === 'Pagar Fatura' && t.amount < 0) return acc - Math.abs(t.amount);
+                    return acc;
+                }, 0);
+
+                if (fatura <= 0) {
+                    console.log("Fatura zerada. Nada a pagar.");
+                    return;
+                }
+
+                await addDoc(collection(db, collectionPath), {
+                    description: "Pagamento de Fatura",
+                    method: "Pagar Fatura",
+                    amount: -fatura,
+                    timestamp: serverTimestamp()
+                });
+
+            } catch (error) {
+                console.error("Erro ao pagar a fatura: ", error);
+            }
         }
 
         async function handleDelete(bankId, transactionId, transferId) {
