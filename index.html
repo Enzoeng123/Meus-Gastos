@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Gastos Pessoal - Cosmos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background-color: #0c0a1a;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tab-panel, .month-group, .login-box {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .glassmorphism {
+            background-color: rgba(20, 18, 41, 0.7);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(129, 140, 248, 0.3);
+            box-shadow: 0 0 20px rgba(79, 70, 229, 0.2);
+        }
+        .tab-btn.active {
+            background-color: rgba(20, 18, 41, 0.7);
+            color: #a5b4fc;
+            border-bottom-color: #818cf8;
+            box-shadow: 0 -5px 15px -5px rgba(129, 140, 248, 0.3);
+        }
+        .tab-btn {
+            background-color: transparent;
+            border-bottom: 2px solid rgba(79, 70, 229, 0.3);
+            color: #9ca3af;
+        }
+        input, select {
+            background-color: rgba(0, 0, 0, 0.3);
+            border-color: rgba(129, 140, 248, 0.3);
+            color: #e0e0e0;
+        }
+        input:focus, select:focus {
+            --tw-ring-color: rgba(129, 140, 248, 0.5);
+            border-color: #818cf8;
+        }
+        .toggle-btn {
+            cursor: pointer;
+            color: #a5b4fc;
+            font-weight: 500;
+        }
+        /* Efeito de Vidro Líquido para botões */
+        .liquid-glass {
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .liquid-glass:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .liquid-glass::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 250%;
+            padding-bottom: 250%;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                rgba(129, 140, 248, 0.8), /* indigo */
+                rgba(192, 132, 252, 0.8), /* purple */
+                rgba(34, 211, 238, 0.8),  /* cyan */
+                rgba(244, 114, 182, 0.8), /* pink */
+                rgba(129, 140, 248, 0.8)
+            );
+            animation: rotate 6s linear infinite;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            opacity: 0.15;
+            transition: opacity 0.4s ease;
+        }
+        .liquid-glass:hover::before {
+            opacity: 0.3;
+        }
+        @keyframes rotate {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <canvas id="starfield" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+
+    <!-- Tela de Login -->
+    <div id="login-screen" class="fixed inset-0 flex items-center justify-center z-50 p-4">
+        <div class="w-full max-w-md p-8 space-y-6 rounded-xl glassmorphism login-box">
+            <div>
+                <h2 class="text-3xl font-bold text-center text-white">Controle Cósmico</h2>
+                <p class="mt-2 text-sm text-center text-gray-400">Entre na sua nave financeira.</p>
+            </div>
+            <form id="login-form" class="space-y-6" onsubmit="return false;">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-300">Email</label>
+                    <input id="email" name="email" type="email" autocomplete="email" required class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-2">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-300">Senha</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required class="mt-1 block w-full px-3 py-2 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-2">
+                </div>
+                <div>
+                    <button type="submit" id="login-btn" class="w-full flex justify-center py-2.5 px-4 rounded-md shadow-sm text-sm font-medium text-white liquid-glass">
+                        Engajar
+                    </button>
+                </div>
+                <p id="login-error" class="text-sm text-rose-400 text-center"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal da Aplicação -->
+    <div id="app-content" class="container mx-auto p-4 md:p-8 max-w-4xl hidden">
+        
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-white">Painel de Controle</h1>
+                <p class="text-gray-400">Navegue pelas suas finanças.</p>
+            </div>
+            <button id="logout-btn" class="px-4 py-2 text-sm font-medium text-indigo-200 bg-indigo-900/50 rounded-md hover:bg-indigo-800/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                Sair
+            </button>
+        </header>
+
+        <!-- Abas de Navegação -->
+        <div class="mb-4 border-b border-gray-700">
+            <nav class="-mb-px flex space-x-2" aria-label="Tabs">
+                <button id="tab-cef" data-bank="cef" class="tab-btn whitespace-nowrap py-3 px-6 font-medium text-sm rounded-t-lg focus:outline-none transition-colors">
+                    CEF
+                </button>
+                <button id="tab-nubank" data-bank="nubank" class="tab-btn whitespace-nowrap py-3 px-6 font-medium text-sm rounded-t-lg focus:outline-none transition-colors">
+                    Nubank
+                </button>
+            </nav>
+        </div>
+
+        <!-- Painéis das Abas -->
+        <div id="tab-panels">
+            <!-- Seção CEF -->
+            <div id="panel-cef" class="tab-panel" data-bank="cef">
+                 <div class="p-6 rounded-xl mb-8 text-center glassmorphism">
+                    <h3 class="text-sm font-medium text-gray-400 uppercase">Saldo CEF</h3>
+                    <p id="balance-cef" class="text-4xl font-bold text-white mt-2">R$ 0,00</p>
+                </div>
+                <div class="p-6 rounded-xl mb-8 glassmorphism">
+                    <h3 class="text-xl font-semibold mb-4 text-white">Adicionar Transação CEF</h3>
+                    <form id="transaction-form-cef" class="space-y-4" onsubmit="return false;">
+                        <div>
+                            <label for="description-cef" class="block text-sm font-medium text-gray-300">Descrição</label>
+                            <input type="text" id="description-cef" placeholder="Ex: Supernova Supermercado" class="mt-1 block w-full px-3 py-2 rounded-md" required>
+                        </div>
+                        <div>
+                            <label for="payment-method-cef" class="block text-sm font-medium text-gray-300">Forma de Pagamento</label>
+                            <select id="payment-method-cef" class="mt-1 block w-full px-3 py-2 rounded-md">
+                                <option>Débito</option>
+                                <option>Pix</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="amount-cef" class="block text-sm font-medium text-gray-300">Valor</label>
+                            <input type="text" id="amount-cef" placeholder="R$ 0,00" inputmode="numeric" class="mt-1 block w-full px-3 py-2 rounded-md" required>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" id="btn-add-cef" class="w-full flex justify-center py-3 px-4 rounded-md text-cyan-300 liquid-glass">Receita</button>
+                            <button type="button" id="btn-subtract-cef" class="w-full flex justify-center py-3 px-4 rounded-md text-rose-300 liquid-glass">Despesa</button>
+                        </div>
+                    </form>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold mb-4 text-white">Histórico CEF</h3>
+                    <div id="history-list-cef" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- Seção Nubank -->
+            <div id="panel-nubank" class="tab-panel hidden" data-bank="nubank">
+                <div class="p-6 rounded-xl mb-8 text-center glassmorphism">
+                    <h3 class="text-sm font-medium text-gray-400 uppercase">Saldo Nubank</h3>
+                    <p id="balance-nubank" class="text-4xl font-bold text-white mt-2">R$ 0,00</p>
+                </div>
+                <div class="p-6 rounded-xl mb-8 glassmorphism">
+                    <h3 class="text-xl font-semibold mb-4 text-white">Adicionar Transação Nubank</h3>
+                    <form id="transaction-form-nubank" class="space-y-4" onsubmit="return false;">
+                        <div>
+                            <label for="description-nubank" class="block text-sm font-medium text-gray-300">Descrição</label>
+                            <input type="text" id="description-nubank" placeholder="Ex: Lanchonete da Galáxia" class="mt-1 block w-full px-3 py-2 rounded-md" required>
+                        </div>
+                        <div>
+                            <label for="payment-method-nubank" class="block text-sm font-medium text-gray-300">Forma de Pagamento</label>
+                            <select id="payment-method-nubank" class="mt-1 block w-full px-3 py-2 rounded-md">
+                                <option>Débito</option>
+                                <option>Crédito</option>
+                                <option>Pix</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="amount-nubank" class="block text-sm font-medium text-gray-300">Valor</label>
+                            <input type="text" id="amount-nubank" placeholder="R$ 0,00" inputmode="numeric" class="mt-1 block w-full px-3 py-2 rounded-md" required>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" id="btn-add-nubank" class="w-full flex justify-center py-3 px-4 rounded-md text-cyan-300 liquid-glass">Receita</button>
+                            <button type="button" id="btn-subtract-nubank" class="w-full flex justify-center py-3 px-4 rounded-md text-rose-300 liquid-glass">Despesa</button>
+                        </div>
+                    </form>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold mb-4 text-white">Histórico Nubank</h3>
+                    <div id="history-list-nubank" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div id="edit-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden z-50">
+         <div class="fixed inset-0 bg-black/60"></div>
+        <div class="relative w-full max-w-md p-5 rounded-xl glassmorphism">
+            <h3 class="text-lg leading-6 font-medium text-white text-center">Editar Transação</h3>
+            <form id="edit-form" class="space-y-4 mt-4" onsubmit="return false;">
+                <input type="hidden" id="edit-id">
+                <input type="hidden" id="edit-bank">
+                <div>
+                    <label for="edit-description" class="text-left block text-sm font-medium text-gray-300">Descrição</label>
+                    <input type="text" id="edit-description" class="mt-1 block w-full px-3 py-2 rounded-md" required>
+                </div>
+                 <div>
+                    <label for="edit-payment-method" class="text-left block text-sm font-medium text-gray-300">Forma de Pagamento</label>
+                    <select id="edit-payment-method" class="mt-1 block w-full px-3 py-2 rounded-md"></select>
+                </div>
+                <div>
+                    <label for="edit-amount" class="text-left block text-sm font-medium text-gray-300">Valor</label>
+                    <input type="text" id="edit-amount" inputmode="numeric" class="mt-1 block w-full px-3 py-2 rounded-md" required>
+                </div>
+                <div class="items-center pt-3 gap-3 flex">
+                    <button type="button" id="save-edit-btn" class="w-full px-4 py-2.5 text-white rounded-md liquid-glass">Salvar</button>
+                    <button type="button" id="cancel-edit-btn" class="w-full px-4 py-2.5 text-gray-200 bg-white/5 rounded-md hover:bg-white/10 transition-all">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, getDocs, where, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIGURAÇÃO DO FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyA7PDTuOjhDl_bIjAybW8okjUr-LzDmkSA",
+            authDomain: "meu-controle-financeiro-e3785.firebaseapp.com",
+            projectId: "meu-controle-financeiro-e3785",
+            storageBucket: "meu-controle-financeiro-e3785.firebasestorage.app",
+            messagingSenderId: "485086901518",
+            appId: "1:485086901518:web:5ffdffe123d59c7f74935f"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // --- ELEMENTOS DO DOM ---
+        const loginScreen = document.getElementById('login-screen');
+        const appContent = document.getElementById('app-content');
+        const loginForm = document.getElementById('login-form');
+        const logoutBtn = document.getElementById('logout-btn');
+        const tabsContainer = document.querySelector('nav[aria-label="Tabs"]');
+        
+        const editModal = document.getElementById('edit-modal');
+        const editForm = document.getElementById('edit-form');
+        const editIdInput = document.getElementById('edit-id');
+        const editBankInput = document.getElementById('edit-bank');
+        const editDescriptionInput = document.getElementById('edit-description');
+        const editPaymentMethodInput = document.getElementById('edit-payment-method');
+        const editAmountInput = document.getElementById('edit-amount');
+        const saveEditBtn = document.getElementById('save-edit-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+        const bankSections = {
+            cef: {
+                balanceEl: document.getElementById('balance-cef'),
+                form: document.getElementById('transaction-form-cef'),
+                descriptionInput: document.getElementById('description-cef'),
+                paymentMethodInput: document.getElementById('payment-method-cef'),
+                amountInput: document.getElementById('amount-cef'),
+                historyList: document.getElementById('history-list-cef'),
+                addBtn: document.getElementById('btn-add-cef'),
+                subtractBtn: document.getElementById('btn-subtract-cef'),
+                tab: document.getElementById('tab-cef'),
+                panel: document.getElementById('panel-cef'),
+                rawAmount: 0.0,
+                unsubscribe: null,
+                paymentOptions: ['Débito', 'Pix']
+            },
+            nubank: {
+                balanceEl: document.getElementById('balance-nubank'),
+                form: document.getElementById('transaction-form-nubank'),
+                descriptionInput: document.getElementById('description-nubank'),
+                paymentMethodInput: document.getElementById('payment-method-nubank'),
+                amountInput: document.getElementById('amount-nubank'),
+                historyList: document.getElementById('history-list-nubank'),
+                addBtn: document.getElementById('btn-add-nubank'),
+                subtractBtn: document.getElementById('btn-subtract-nubank'),
+                tab: document.getElementById('tab-nubank'),
+                panel: document.getElementById('panel-nubank'),
+                rawAmount: 0.0,
+                unsubscribe: null,
+                paymentOptions: ['Débito', 'Crédito', 'Pix']
+            }
+        };
+
+        let currentUserId = null;
+        let rawEditAmount = 0.0;
+
+        // --- FUNÇÕES DE UTILIDADE ---
+        const formatValueAsCurrency = (value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        const setupCurrencyInput = (inputElement, callback) => {
+            inputElement.addEventListener('input', (e) => {
+                const value = e.target.value.replace(/\D/g, '');
+                const numericValue = value ? parseInt(value, 10) / 100 : 0;
+                callback(numericValue);
+                e.target.value = value ? formatValueAsCurrency(numericValue) : '';
+            });
+        };
+
+        // --- LÓGICA DAS ABAS ---
+        function switchTab(bankIdToActivate) {
+            Object.values(bankSections).forEach(bank => {
+                const isActive = bank.tab.dataset.bank === bankIdToActivate;
+                bank.tab.classList.toggle('active', isActive);
+                bank.panel.classList.toggle('hidden', !isActive);
+            });
+        }
+        
+        tabsContainer.addEventListener('click', (e) => {
+            const tab = e.target.closest('.tab-btn');
+            if (tab) switchTab(tab.dataset.bank);
+        });
+
+        // --- AUTENTICAÇÃO ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loginScreen.classList.add('hidden');
+                appContent.classList.remove('hidden');
+                currentUserId = user.uid;
+                Object.keys(bankSections).forEach(bankId => setupFirestoreListeners(bankId));
+                switchTab('cef');
+            } else {
+                loginScreen.classList.remove('hidden');
+                appContent.classList.add('hidden');
+                currentUserId = null;
+                Object.values(bankSections).forEach(bank => {
+                    if (bank.unsubscribe) bank.unsubscribe();
+                    bank.historyList.innerHTML = `<div class="p-4 text-center glassmorphism rounded-xl">Aguardando login...</div>`;
+                    bank.balanceEl.textContent = formatValueAsCurrency(0);
+                });
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginForm.email.value;
+            const password = loginForm.password.value;
+            const loginBtn = document.getElementById('login-btn');
+            const loginError = document.getElementById('login-error');
+            loginError.textContent = '';
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Engajando...';
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                loginError.textContent = 'Credenciais inválidas.';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Engajar';
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => signOut(auth));
+
+        // --- LÓGICA DE CADA BANCO ---
+        Object.keys(bankSections).forEach(bankId => {
+            const bank = bankSections[bankId];
+            bank.addBtn.addEventListener('click', () => addTransaction(bankId, false));
+            bank.subtractBtn.addEventListener('click', () => addTransaction(bankId, true));
+            setupCurrencyInput(bank.amountInput, (value) => { bank.rawAmount = value; });
+            bank.historyList.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+                const id = button.dataset.id;
+                if (button.classList.contains('edit-btn')) {
+                    const { description, amount, method } = button.dataset;
+                    handleEdit(bankId, id, description, parseFloat(amount), method);
+                } else if (button.classList.contains('delete-btn')) {
+                    const { transferId } = button.dataset;
+                    handleDelete(bankId, id, transferId);
+                }
+            });
+        });
+        
+        setupCurrencyInput(editAmountInput, (value) => { rawEditAmount = value; });
+
+        // --- LÓGICA DO FIRESTORE ---
+        function setupFirestoreListeners(bankId) {
+            if (!currentUserId) return;
+            const bank = bankSections[bankId];
+            const collectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_${bankId}`;
+            const q = query(collection(db, collectionPath), orderBy('timestamp', 'desc'));
+            if (bank.unsubscribe) bank.unsubscribe();
+            bank.unsubscribe = onSnapshot(q, (snapshot) => {
+                const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateUI(bankId, transactions);
+            }, (error) => {
+                console.error(`Erro ao buscar transações de ${bankId}:`, error);
+                bank.historyList.innerHTML = `<div class="p-4 text-center text-rose-400 glassmorphism rounded-xl">Erro ao carregar histórico.</div>`;
+            });
+        }
+
+        async function addTransaction(bankId, isExpense) {
+            if (!currentUserId) return;
+            const bank = bankSections[bankId];
+            const description = bank.descriptionInput.value.trim();
+            const method = bank.paymentMethodInput.value;
+            const amount = bank.rawAmount;
+
+            if (description === '' || amount === 0) return;
+
+            const isTransfer = bankId === 'cef' && description.toLowerCase().includes('nubank') && method === 'Pix' && isExpense;
+
+            if (isTransfer) {
+                const transferId = crypto.randomUUID();
+                const batch = writeBatch(db);
+                
+                const cefCollectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_cef`;
+                const cefDocRef = doc(collection(db, cefCollectionPath));
+                batch.set(cefDocRef, { 
+                    description: description,
+                    method: 'Pix',
+                    amount: -Math.abs(amount),
+                    timestamp: serverTimestamp(),
+                    isTransfer: true,
+                    transferId: transferId
+                });
+
+                const nubankCollectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_nubank`;
+                const nubankDocRef = doc(collection(db, nubankCollectionPath));
+                batch.set(nubankDocRef, {
+                    description: "Recebimento da CEF",
+                    method: "Pix",
+                    amount: Math.abs(amount),
+                    timestamp: serverTimestamp(),
+                    isTransfer: true,
+                    transferId: transferId
+                });
+
+                try {
+                    await batch.commit();
+                    bank.form.reset();
+                    bank.amountInput.value = '';
+                    bank.rawAmount = 0;
+                } catch (error) {
+                    console.error("Erro na transferência automática:", error);
+                }
+            } else {
+                const finalAmount = isExpense ? -Math.abs(amount) : Math.abs(amount);
+                const collectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_${bankId}`;
+                try {
+                    await addDoc(collection(db, collectionPath), { description, method, amount: finalAmount, timestamp: serverTimestamp() });
+                    bank.form.reset();
+                    bank.amountInput.value = '';
+                    bank.rawAmount = 0;
+                } catch (error) {
+                    console.error("Erro ao adicionar transação: ", error);
+                }
+            }
+        }
+
+        async function handleDelete(bankId, transactionId, transferId) {
+            if (!currentUserId) return;
+
+            const batch = writeBatch(db);
+            const mainCollectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_${bankId}`;
+            const mainDocRef = doc(db, mainCollectionPath, transactionId);
+            batch.delete(mainDocRef);
+
+            if (transferId) {
+                const otherBankId = bankId === 'cef' ? 'nubank' : 'cef';
+                const otherCollectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_${otherBankId}`;
+                const q = query(collection(db, otherCollectionPath), where("transferId", "==", transferId));
+                try {
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach((doc) => {
+                        batch.delete(doc.ref);
+                    });
+                } catch (error) {
+                    console.error("Erro ao buscar transação para exclusão sincronizada:", error);
+                }
+            }
+
+            try {
+                await batch.commit();
+            } catch (error) {
+                console.error("Erro ao excluir transação(ões):", error);
+            }
+        }
+
+        // --- ATUALIZAÇÃO DA UI ---
+        function updateUI(bankId, transactions) {
+            const bank = bankSections[bankId];
+            bank.historyList.innerHTML = '';
+            
+            const grouped = transactions.reduce((acc, t) => {
+                if (t.timestamp) {
+                    const date = t.timestamp.toDate();
+                    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(t);
+                }
+                return acc;
+            }, {});
+
+            const sortedMonths = Object.keys(grouped).sort().reverse();
+
+            if (sortedMonths.length === 0) {
+                 bank.historyList.innerHTML = `<div class="p-4 text-center glassmorphism rounded-xl">Nenhuma transação registrada.</div>`;
+                 updateBalance(bankId, []);
+                 return;
+            }
+
+            sortedMonths.forEach(monthKey => {
+                const [year, month] = monthKey.split('-');
+                const monthName = new Date(year, month - 1).toLocaleString('pt-BR', { month: 'long' });
+                const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+                const monthContainer = document.createElement('div');
+                monthContainer.className = 'month-group glassmorphism rounded-xl';
+                
+                const header = document.createElement('h4');
+                header.className = 'p-4 text-lg font-semibold border-b border-gray-700';
+                header.textContent = `${capitalizedMonth} de ${year}`;
+                monthContainer.appendChild(header);
+
+                const listElement = document.createElement('ul');
+                listElement.className = 'divide-y divide-gray-700';
+                
+                const monthTransactions = grouped[monthKey];
+                monthTransactions.forEach((transaction, index) => {
+                    if (index < 10) {
+                        addTransactionToDOM(listElement, bankId, transaction);
+                    }
+                });
+
+                if (monthTransactions.length > 10) {
+                    const hiddenItemsContainer = document.createElement('div');
+                    hiddenItemsContainer.className = 'hidden divide-y divide-gray-700';
+                    
+                    for (let i = 10; i < monthTransactions.length; i++) {
+                        addTransactionToDOM(hiddenItemsContainer, bankId, monthTransactions[i]);
+                    }
+
+                    const toggleBtn = document.createElement('div');
+                    toggleBtn.className = 'p-4 text-center toggle-btn';
+                    toggleBtn.textContent = 'Ver mais';
+                    toggleBtn.onclick = () => {
+                        const isHidden = hiddenItemsContainer.classList.toggle('hidden');
+                        toggleBtn.textContent = isHidden ? 'Ver mais' : 'Ver menos';
+                    };
+                    listElement.appendChild(hiddenItemsContainer);
+                    listElement.appendChild(toggleBtn);
+                }
+                
+                monthContainer.appendChild(listElement);
+                bank.historyList.appendChild(monthContainer);
+            });
+
+            updateBalance(bankId, transactions);
+        }
+
+        function addTransactionToDOM(parentElement, bankId, transaction) {
+            const sign = transaction.amount < 0 ? '-' : '+';
+            const amountAbs = Math.abs(transaction.amount);
+            const colorClass = transaction.amount < 0 ? 'text-rose-400' : 'text-cyan-400';
+            const methodDisplay = transaction.method ? `<span class="text-gray-400 font-normal ml-2">"${transaction.method}"</span>` : '';
+            const item = document.createElement('li');
+            item.classList.add('p-4', 'flex', 'justify-between', 'items-center', 'transaction-item');
+            item.innerHTML = `
+                <div class="flex-1 pr-4">
+                    <p class="font-semibold text-gray-200">${transaction.description}${methodDisplay}</p>
+                    <p class="text-sm text-gray-400">${transaction.timestamp ? new Date(transaction.timestamp.toDate()).toLocaleDateString('pt-BR') : ''}</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold text-lg ${colorClass}">${sign} ${formatValueAsCurrency(amountAbs)}</p>
+                    <div class="flex justify-end items-center gap-2 mt-1">
+                        <button data-id="${transaction.id}" data-description="${transaction.description}" data-amount="${transaction.amount}" data-method="${transaction.method || ''}" class="edit-btn p-1 text-gray-500 hover:text-indigo-400 transition-colors">
+                            <svg class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>
+                        </button>
+                        <button data-id="${transaction.id}" data-transfer-id="${transaction.transferId || ''}" class="delete-btn p-1 text-gray-500 hover:text-rose-400 transition-colors">
+                           <svg class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>
+                </div>`;
+            parentElement.appendChild(item);
+        }
+
+        function updateBalance(bankId, transactions) {
+            const bank = bankSections[bankId];
+            const total = transactions.reduce((acc, transaction) => acc + transaction.amount, 0);
+            bank.balanceEl.textContent = formatValueAsCurrency(total);
+            bank.balanceEl.className = 'text-4xl font-bold mt-2 transition-colors ';
+            if (total < 0) bank.balanceEl.classList.add('text-rose-400');
+            else if (total > 0) bank.balanceEl.classList.add('text-cyan-400');
+            else bank.balanceEl.classList.add('text-white');
+        }
+        
+        // --- LÓGICA DO MODAL DE EDIÇÃO ---
+        function handleEdit(bankId, id, description, amount, method) {
+            editBankInput.value = bankId;
+            editIdInput.value = id;
+            editDescriptionInput.value = description;
+            
+            const bank = bankSections[bankId];
+            editPaymentMethodInput.innerHTML = '';
+            bank.paymentOptions.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                editPaymentMethodInput.appendChild(option);
+            });
+            editPaymentMethodInput.value = method || bank.paymentOptions[0];
+
+            rawEditAmount = Math.abs(amount);
+            editAmountInput.value = formatValueAsCurrency(rawEditAmount);
+            editModal.classList.remove('hidden');
+        }
+
+        saveEditBtn.addEventListener('click', async () => {
+            const bankId = editBankInput.value;
+            const id = editIdInput.value;
+            const newDescription = editDescriptionInput.value.trim();
+            const newMethod = editPaymentMethodInput.value;
+            if (newDescription === '' || rawEditAmount === 0) return;
+            
+            const collectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_${bankId}`;
+            const docRef = doc(db, collectionPath, id);
+
+            try {
+                const q = query(collection(db, collectionPath));
+                const querySnapshot = await getDocs(q);
+                const originalDoc = querySnapshot.docs.find(d => d.id === id)?.data();
+
+                if (originalDoc) {
+                    const newAmount = originalDoc.amount < 0 ? -Math.abs(rawEditAmount) : Math.abs(rawEditAmount);
+                    await updateDoc(docRef, { description: newDescription, method: newMethod, amount: newAmount });
+                    closeEditModal();
+                }
+            } catch (error) {
+                console.error("Erro ao atualizar transação: ", error);
+            }
+        });
+
+        cancelEditBtn.addEventListener('click', closeEditModal);
+        function closeEditModal() {
+            editModal.classList.add('hidden');
+            editForm.reset();
+        }
+
+        // --- ANIMAÇÃO DE FUNDO ---
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const stars = [];
+        const numStars = 200;
+
+        for (let i = 0; i < numStars; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 1.5,
+                alpha: Math.random(),
+                speed: Math.random() * 0.2 + 0.1
+            });
+        }
+
+        function drawStars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                ctx.fill();
+            });
+        }
+
+        function updateStars() {
+            stars.forEach(star => {
+                star.x -= star.speed;
+                if (star.x < 0) {
+                    star.x = canvas.width;
+                }
+            });
+        }
+
+        function animate() {
+            drawStars();
+            updateStars();
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+    </script>
+</body>
+</html>
