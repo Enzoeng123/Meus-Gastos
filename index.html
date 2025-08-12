@@ -167,7 +167,7 @@
                     <form id="transaction-form-cef" class="space-y-4" onsubmit="return false;">
                         <div>
                             <label for="description-cef" class="block text-sm font-medium text-gray-300">Descrição</label>
-                            <input type="text" id="description-cef" placeholder="Ex: Padaria, Almoço, Mercado..." class="mt-1 block w-full px-3 py-2 rounded-md" required>
+                            <input type="text" id="description-cef" placeholder="Ex: Padaria, Mercado, Almoço..." class="mt-1 block w-full px-3 py-2 rounded-md" required>
                         </div>
                         <div>
                             <label for="payment-method-cef" class="block text-sm font-medium text-gray-300">Forma de Pagamento</label>
@@ -196,9 +196,15 @@
 
             <!-- Seção Nubank -->
             <div id="panel-nubank" class="tab-panel hidden" data-bank="nubank">
-                <div class="p-6 rounded-xl mb-8 text-center glassmorphism">
-                    <h3 class="text-sm font-medium text-gray-400 uppercase">Saldo Nubank</h3>
-                    <p id="balance-nubank" class="text-4xl font-bold text-white mt-2">R$ 0,00</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-6 rounded-xl mb-8 text-center glassmorphism">
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-400 uppercase">Saldo em Conta</h3>
+                        <p id="balance-nubank" class="text-4xl font-bold text-white mt-2">R$ 0,00</p>
+                    </div>
+                    <div class="border-t md:border-t-0 md:border-l border-gray-700 pt-4 md:pt-0 md:pl-4">
+                        <h3 class="text-sm font-medium text-gray-400 uppercase">Fatura Atual</h3>
+                        <p id="invoice-nubank" class="text-4xl font-bold text-white mt-2">R$ 0,00</p>
+                    </div>
                 </div>
                 <div class="p-6 rounded-xl mb-8 glassmorphism">
                     <h3 class="text-xl font-semibold mb-4 text-white">Adicionar Transação Nubank</h3>
@@ -213,6 +219,7 @@
                                 <option>Débito</option>
                                 <option>Crédito</option>
                                 <option>Pix</option>
+                                <option>Pagar Fatura</option>
                             </select>
                         </div>
                         <div>
@@ -315,6 +322,7 @@
             },
             nubank: {
                 balanceEl: document.getElementById('balance-nubank'),
+                invoiceEl: document.getElementById('invoice-nubank'),
                 form: document.getElementById('transaction-form-nubank'),
                 descriptionInput: document.getElementById('description-nubank'),
                 paymentMethodInput: document.getElementById('payment-method-nubank'),
@@ -326,7 +334,7 @@
                 panel: document.getElementById('panel-nubank'),
                 rawAmount: 0.0,
                 unsubscribe: null,
-                paymentOptions: ['Débito', 'Crédito', 'Pix']
+                paymentOptions: ['Débito', 'Crédito', 'Pix', 'Pagar Fatura']
             }
         };
 
@@ -375,6 +383,7 @@
                     if (bank.unsubscribe) bank.unsubscribe();
                     bank.historyList.innerHTML = `<div class="p-4 text-center glassmorphism rounded-xl">Aguardando login...</div>`;
                     bank.balanceEl.textContent = formatValueAsCurrency(0);
+                    if(bank.invoiceEl) bank.invoiceEl.textContent = formatValueAsCurrency(0);
                 });
             }
         });
@@ -447,54 +456,47 @@
 
             if (description === '' || amount === 0) return;
 
+            // Regra especial: Transferência da CEF para o Nubank
             const isTransfer = bankId === 'cef' && description.toLowerCase().includes('nubank') && method === 'Pix' && isExpense;
-
             if (isTransfer) {
                 const transferId = crypto.randomUUID();
                 const batch = writeBatch(db);
                 
-                const cefCollectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_cef`;
-                const cefDocRef = doc(collection(db, cefCollectionPath));
+                const cefDocRef = doc(collection(db, `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_cef`));
                 batch.set(cefDocRef, { 
-                    description: description,
-                    method: 'Pix',
-                    amount: -Math.abs(amount),
-                    timestamp: serverTimestamp(),
-                    isTransfer: true,
-                    transferId: transferId
+                    description, method, amount: -Math.abs(amount), timestamp: serverTimestamp(), isTransfer: true, transferId
                 });
 
-                const nubankCollectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_nubank`;
-                const nubankDocRef = doc(collection(db, nubankCollectionPath));
+                const nubankDocRef = doc(collection(db, `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_nubank`));
                 batch.set(nubankDocRef, {
-                    description: "Recebimento da CEF",
-                    method: "Pix",
-                    amount: Math.abs(amount),
-                    timestamp: serverTimestamp(),
-                    isTransfer: true,
-                    transferId: transferId
+                    description: "Recebimento da CEF", method: "Pix", amount: Math.abs(amount), timestamp: serverTimestamp(), isTransfer: true, transferId
                 });
 
                 try {
                     await batch.commit();
-                    bank.form.reset();
-                    bank.amountInput.value = '';
-                    bank.rawAmount = 0;
                 } catch (error) {
                     console.error("Erro na transferência automática:", error);
                 }
             } else {
+                // Regra especial: Pagamento de Fatura Nubank
+                if (bankId === 'nubank' && method === 'Pagar Fatura' && !isExpense) {
+                    alert('Pagamento de fatura deve ser registrado como uma despesa.');
+                    return;
+                }
+
                 const finalAmount = isExpense ? -Math.abs(amount) : Math.abs(amount);
                 const collectionPath = `artifacts/${firebaseConfig.projectId}/users/${currentUserId}/transactions_${bankId}`;
                 try {
                     await addDoc(collection(db, collectionPath), { description, method, amount: finalAmount, timestamp: serverTimestamp() });
-                    bank.form.reset();
-                    bank.amountInput.value = '';
-                    bank.rawAmount = 0;
                 } catch (error) {
                     console.error("Erro ao adicionar transação: ", error);
                 }
             }
+
+            // Limpa o formulário após qualquer operação bem-sucedida
+            bank.form.reset();
+            bank.amountInput.value = '';
+            bank.rawAmount = 0;
         }
 
         async function handleDelete(bankId, transactionId, transferId) {
@@ -511,9 +513,7 @@
                 const q = query(collection(db, otherCollectionPath), where("transferId", "==", transferId));
                 try {
                     const querySnapshot = await getDocs(q);
-                    querySnapshot.forEach((doc) => {
-                        batch.delete(doc.ref);
-                    });
+                    querySnapshot.forEach((doc) => batch.delete(doc.ref));
                 } catch (error) {
                     console.error("Erro ao buscar transação para exclusão sincronizada:", error);
                 }
@@ -626,12 +626,23 @@
 
         function updateBalance(bankId, transactions) {
             const bank = bankSections[bankId];
-            const total = transactions.reduce((acc, transaction) => acc + transaction.amount, 0);
-            bank.balanceEl.textContent = formatValueAsCurrency(total);
-            bank.balanceEl.className = 'text-4xl font-bold mt-2 transition-colors ';
-            if (total < 0) bank.balanceEl.classList.add('text-rose-400');
-            else if (total > 0) bank.balanceEl.classList.add('text-cyan-400');
-            else bank.balanceEl.classList.add('text-white');
+            if (bankId === 'cef') {
+                const total = transactions.reduce((acc, t) => acc + t.amount, 0);
+                bank.balanceEl.textContent = formatValueAsCurrency(total);
+                bank.balanceEl.className = `text-4xl font-bold mt-2 transition-colors ${total < 0 ? 'text-rose-400' : total > 0 ? 'text-cyan-400' : 'text-white'}`;
+            } else if (bankId === 'nubank') {
+                const saldo = transactions.reduce((acc, t) => (t.method !== 'Crédito') ? acc + t.amount : acc, 0);
+                const fatura = transactions.reduce((acc, t) => {
+                    if (t.method === 'Crédito' && t.amount < 0) return acc + Math.abs(t.amount);
+                    if (t.method === 'Pagar Fatura' && t.amount < 0) return acc - Math.abs(t.amount);
+                    return acc;
+                }, 0);
+                
+                bank.balanceEl.textContent = formatValueAsCurrency(saldo);
+                bank.balanceEl.className = `text-4xl font-bold mt-2 transition-colors ${saldo < 0 ? 'text-rose-400' : saldo > 0 ? 'text-cyan-400' : 'text-white'}`;
+                bank.invoiceEl.textContent = formatValueAsCurrency(fatura);
+                bank.invoiceEl.className = 'text-4xl font-bold mt-2 transition-colors text-rose-400';
+            }
         }
         
         // --- LÓGICA DO MODAL DE EDIÇÃO ---
@@ -739,6 +750,3 @@
     </script>
 </body>
 </html>
-
-
-
