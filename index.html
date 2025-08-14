@@ -159,7 +159,7 @@
             <!-- Seção CEF -->
             <div id="panel-cef" class="tab-panel" data-bank="cef">
                  <div class="p-6 rounded-xl mb-8 text-center glassmorphism">
-                    <h3 class="text-sm font-medium text-gray-400 uppercase">Saldo em conta</h3>
+                    <h3 class="text-sm font-medium text-gray-400 uppercase">Saldo CEF</h3>
                     <p id="balance-cef" class="text-4xl font-bold text-white mt-2">R$ 0,00</p>
                 </div>
                 <div class="p-6 rounded-xl mb-8 glassmorphism">
@@ -343,6 +343,7 @@
 
         let currentUserId = null;
         let rawEditAmount = 0.0;
+        const VISIBLE_TRANSACTION_LIMIT = 5;
 
         // --- FUNÇÕES DE UTILIDADE ---
         const formatValueAsCurrency = (value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -401,7 +402,6 @@
             loginBtn.disabled = true;
             loginBtn.textContent = 'Entrando...';
             try {
-                // Define a persistência da sessão para a aba do navegador
                 await setPersistence(auth, browserSessionPersistence);
                 await signInWithEmailAndPassword(auth, email, password);
             } catch (error) {
@@ -516,7 +516,7 @@
                 }, 0);
 
                 if (fatura <= 0) {
-                    console.log("Fatura zerada. Nada a pagar.");
+                    alert("A fatura está zerada. Não há nada a pagar.");
                     return;
                 }
 
@@ -783,6 +783,3 @@
     </script>
 </body>
 </html>
-
-
-
