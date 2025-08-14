@@ -600,16 +600,16 @@
                 
                 const monthTransactions = grouped[monthKey];
                 monthTransactions.forEach((transaction, index) => {
-                    if (index < 5) {
+                    if (index < VISIBLE_TRANSACTION_LIMIT) {
                         addTransactionToDOM(listElement, bankId, transaction);
                     }
                 });
 
-                if (monthTransactions.length > 10) {
+                if (monthTransactions.length > VISIBLE_TRANSACTION_LIMIT) {
                     const hiddenItemsContainer = document.createElement('div');
                     hiddenItemsContainer.className = 'hidden divide-y divide-gray-700';
                     
-                    for (let i = 10; i < monthTransactions.length; i++) {
+                    for (let i = VISIBLE_TRANSACTION_LIMIT; i < monthTransactions.length; i++) {
                         addTransactionToDOM(hiddenItemsContainer, bankId, monthTransactions[i]);
                     }
 
@@ -783,5 +783,6 @@
     </script>
 </body>
 </html>
+
 
 
