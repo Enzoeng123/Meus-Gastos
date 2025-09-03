@@ -159,8 +159,13 @@
             <!-- Seção CEF -->
             <div id="panel-cef" class="tab-panel" data-bank="cef">
                  <div class="p-6 rounded-xl mb-8 text-center glassmorphism">
-                    <h3 class="text-sm font-medium text-gray-400 uppercase">Saldo em conta</h3>
-                    <p id="balance-cef" class="text-4xl font-bold text-white mt-2">R$ 0,00</p>
+                    <div class="flex justify-center items-center gap-2">
+                        <h3 class="text-sm font-medium text-gray-400 uppercase">Saldo em conta</h3>
+                        <button id="toggle-visibility-cef" class="balance-toggle-btn text-gray-400 hover:text-white transition-colors">
+                            <!-- Ícone do olho inserido via JS -->
+                        </button>
+                    </div>
+                    <p id="balance-cef" class="text-4xl font-bold text-white mt-2 h-[40px] flex items-center justify-center"></p>
                 </div>
                 <div class="p-6 rounded-xl mb-8 glassmorphism">
                     <h3 class="text-xl font-semibold mb-4 text-white">Adicionar Transação CEF</h3>
@@ -198,12 +203,22 @@
             <div id="panel-nubank" class="tab-panel hidden" data-bank="nubank">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-6 rounded-xl mb-8 text-center glassmorphism">
                     <div>
-                        <h3 class="text-sm font-medium text-gray-400 uppercase">Saldo em Conta</h3>
-                        <p id="balance-nubank" class="text-4xl font-bold text-white mt-2">R$ 0,00</p>
+                        <div class="flex justify-center items-center gap-2">
+                            <h3 class="text-sm font-medium text-gray-400 uppercase">Saldo em Conta</h3>
+                             <button id="toggle-balance-visibility-nubank" class="balance-toggle-btn text-gray-400 hover:text-white transition-colors">
+                                <!-- Ícone do olho inserido via JS -->
+                            </button>
+                        </div>
+                        <p id="balance-nubank" class="text-4xl font-bold text-white mt-2 h-[40px] flex items-center justify-center"></p>
                     </div>
                     <div class="border-t md:border-t-0 md:border-l border-gray-700 pt-4 md:pt-0 md:pl-4">
-                        <h3 class="text-sm font-medium text-gray-400 uppercase">Fatura Atual</h3>
-                        <p id="invoice-nubank" class="text-4xl font-bold text-white mt-2">R$ 0,00</p>
+                        <div class="flex justify-center items-center gap-2">
+                            <h3 class="text-sm font-medium text-gray-400 uppercase">Fatura Atual</h3>
+                            <button id="toggle-invoice-visibility-nubank" class="balance-toggle-btn text-gray-400 hover:text-white transition-colors">
+                                <!-- Ícone do olho inserido via JS -->
+                            </button>
+                        </div>
+                        <p id="invoice-nubank" class="text-4xl font-bold text-white mt-2 h-[40px] flex items-center justify-center"></p>
                     </div>
                 </div>
                 <div class="p-6 rounded-xl mb-8 glassmorphism">
@@ -306,9 +321,13 @@
         const saveEditBtn = document.getElementById('save-edit-btn');
         const cancelEditBtn = document.getElementById('cancel-edit-btn');
 
+        const eyeOpenIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>`;
+        const eyeClosedIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19 12 19c.996 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 2.662 10.065 7.003a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.243 4.243l-4.243-4.243" /></svg>`;
+
         const bankSections = {
             cef: {
                 balanceEl: document.getElementById('balance-cef'),
+                toggleBtn: document.getElementById('toggle-visibility-cef'),
                 form: document.getElementById('transaction-form-cef'),
                 descriptionInput: document.getElementById('description-cef'),
                 paymentMethodInput: document.getElementById('payment-method-cef'),
@@ -319,12 +338,15 @@
                 tab: document.getElementById('tab-cef'),
                 panel: document.getElementById('panel-cef'),
                 rawAmount: 0.0,
+                calculatedBalance: 0,
                 unsubscribe: null,
                 paymentOptions: ['Débito', 'Pix', 'Cred Juros', 'Cred Cm']
             },
             nubank: {
                 balanceEl: document.getElementById('balance-nubank'),
                 invoiceEl: document.getElementById('invoice-nubank'),
+                balanceToggleBtn: document.getElementById('toggle-balance-visibility-nubank'),
+                invoiceToggleBtn: document.getElementById('toggle-invoice-visibility-nubank'),
                 form: document.getElementById('transaction-form-nubank'),
                 descriptionInput: document.getElementById('description-nubank'),
                 paymentMethodInput: document.getElementById('payment-method-nubank'),
@@ -336,6 +358,8 @@
                 tab: document.getElementById('tab-nubank'),
                 panel: document.getElementById('panel-nubank'),
                 rawAmount: 0.0,
+                calculatedBalance: 0,
+                calculatedInvoice: 0,
                 unsubscribe: null,
                 paymentOptions: ['Débito', 'Crédito', 'Pix']
             }
@@ -344,6 +368,45 @@
         let currentUserId = null;
         let rawEditAmount = 0.0;
         const VISIBLE_TRANSACTION_LIMIT = 5;
+
+        // --- LÓGICA DE VISIBILIDADE DE SALDO ---
+        let balanceVisibility = { cef: false, nubank: { balance: false, invoice: false } };
+        const HIDDEN_BALANCE_PLACEHOLDER = `<div class="bg-gray-700 rounded w-40 h-7 animate-pulse"></div>`;
+
+        function toggleVisibility(bankId, type = 'balance') { // type can be 'balance' or 'invoice'
+            if (bankId === 'cef') {
+                balanceVisibility.cef = !balanceVisibility.cef;
+            } else if (bankId === 'nubank') {
+                balanceVisibility.nubank[type] = !balanceVisibility.nubank[type];
+            }
+            updateBalanceUIVisibility(bankId);
+        }
+
+        function updateBalanceUIVisibility(bankId) {
+            const bank = bankSections[bankId];
+            
+            if (bankId === 'cef') {
+                const isVisible = balanceVisibility.cef;
+                bank.toggleBtn.innerHTML = isVisible ? eyeOpenIcon : eyeClosedIcon;
+                bank.balanceEl.innerHTML = isVisible ? formatValueAsCurrency(bank.calculatedBalance) : HIDDEN_BALANCE_PLACEHOLDER;
+                bank.balanceEl.className = `text-4xl font-bold mt-2 transition-colors h-[40px] flex items-center justify-center ${isVisible && bank.calculatedBalance < 0 ? 'text-rose-400' : isVisible && bank.calculatedBalance > 0 ? 'text-cyan-400' : 'text-white'}`;
+            }
+
+            if (bankId === 'nubank') {
+                const isBalanceVisible = balanceVisibility.nubank.balance;
+                const isInvoiceVisible = balanceVisibility.nubank.invoice;
+
+                bank.balanceToggleBtn.innerHTML = isBalanceVisible ? eyeOpenIcon : eyeClosedIcon;
+                bank.invoiceToggleBtn.innerHTML = isInvoiceVisible ? eyeOpenIcon : eyeClosedIcon;
+                
+                bank.balanceEl.innerHTML = isBalanceVisible ? formatValueAsCurrency(bank.calculatedBalance) : HIDDEN_BALANCE_PLACEHOLDER;
+                bank.balanceEl.className = `text-4xl font-bold mt-2 transition-colors h-[40px] flex items-center justify-center ${isBalanceVisible && bank.calculatedBalance < 0 ? 'text-rose-400' : isBalanceVisible && bank.calculatedBalance > 0 ? 'text-cyan-400' : 'text-white'}`;
+                
+                bank.invoiceEl.innerHTML = isInvoiceVisible ? formatValueAsCurrency(bank.calculatedInvoice) : HIDDEN_BALANCE_PLACEHOLDER;
+                bank.invoiceEl.className = 'text-4xl font-bold mt-2 transition-colors text-rose-400 h-[40px] flex items-center justify-center';
+            }
+        }
+
 
         // --- FUNÇÕES DE UTILIDADE ---
         const formatValueAsCurrency = (value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -377,7 +440,12 @@
                 loginScreen.classList.add('hidden');
                 appContent.classList.remove('hidden');
                 currentUserId = user.uid;
-                Object.keys(bankSections).forEach(bankId => setupFirestoreListeners(bankId));
+                Object.keys(bankSections).forEach(bankId => {
+                    setupFirestoreListeners(bankId);
+                    balanceVisibility.cef = false;
+                    balanceVisibility.nubank = { balance: false, invoice: false };
+                    updateBalanceUIVisibility(bankId);
+                });
                 switchTab('cef');
             } else {
                 loginScreen.classList.remove('hidden');
@@ -386,8 +454,12 @@
                 Object.values(bankSections).forEach(bank => {
                     if (bank.unsubscribe) bank.unsubscribe();
                     bank.historyList.innerHTML = `<div class="p-4 text-center glassmorphism rounded-xl">Aguardando login...</div>`;
-                    bank.balanceEl.textContent = formatValueAsCurrency(0);
-                    if(bank.invoiceEl) bank.invoiceEl.textContent = formatValueAsCurrency(0);
+                    const bankId = bank.tab.dataset.bank;
+                    bank.calculatedBalance = 0;
+                    if(bank.calculatedInvoice !== undefined) bank.calculatedInvoice = 0;
+                    balanceVisibility.cef = false;
+                    balanceVisibility.nubank = { balance: false, invoice: false };
+                    updateBalanceUIVisibility(bankId);
                 });
             }
         });
@@ -417,6 +489,12 @@
         // --- LÓGICA DE CADA BANCO ---
         Object.keys(bankSections).forEach(bankId => {
             const bank = bankSections[bankId];
+            if (bankId === 'cef') {
+                bank.toggleBtn.addEventListener('click', () => toggleVisibility('cef'));
+            } else if (bankId === 'nubank') {
+                bank.balanceToggleBtn.addEventListener('click', () => toggleVisibility('nubank', 'balance'));
+                bank.invoiceToggleBtn.addEventListener('click', () => toggleVisibility('nubank', 'invoice'));
+            }
             bank.addBtn.addEventListener('click', () => addTransaction(bankId, false));
             bank.subtractBtn.addEventListener('click', () => addTransaction(bankId, true));
             if (bank.payInvoiceBtn) {
@@ -661,8 +739,7 @@
             const bank = bankSections[bankId];
             if (bankId === 'cef') {
                 const total = transactions.reduce((acc, t) => acc + t.amount, 0);
-                bank.balanceEl.textContent = formatValueAsCurrency(total);
-                bank.balanceEl.className = `text-4xl font-bold mt-2 transition-colors ${total < 0 ? 'text-rose-400' : total > 0 ? 'text-cyan-400' : 'text-white'}`;
+                bank.calculatedBalance = total;
             } else if (bankId === 'nubank') {
                 const saldo = transactions.reduce((acc, t) => (t.method !== 'Crédito') ? acc + t.amount : acc, 0);
                 const fatura = transactions.reduce((acc, t) => {
@@ -670,12 +747,10 @@
                     if (t.method === 'Pagar Fatura' && t.amount < 0) return acc - Math.abs(t.amount);
                     return acc;
                 }, 0);
-                
-                bank.balanceEl.textContent = formatValueAsCurrency(saldo);
-                bank.balanceEl.className = `text-4xl font-bold mt-2 transition-colors ${saldo < 0 ? 'text-rose-400' : saldo > 0 ? 'text-cyan-400' : 'text-white'}`;
-                bank.invoiceEl.textContent = formatValueAsCurrency(fatura);
-                bank.invoiceEl.className = 'text-4xl font-bold mt-2 transition-colors text-rose-400';
+                bank.calculatedBalance = saldo;
+                bank.calculatedInvoice = fatura;
             }
+            updateBalanceUIVisibility(bankId);
         }
         
         // --- LÓGICA DO MODAL DE EDIÇÃO ---
